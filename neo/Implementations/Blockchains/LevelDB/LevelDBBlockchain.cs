@@ -288,9 +288,7 @@ namespace Neo.Implementations.Blockchains.LevelDB
             return value.ToArray().ToInt64(0);
         }
 
-        public DataCache<TKey, TValue> GetTable<TKey, TValue>()
-            where TKey : IEquatable<TKey>, ISerializable, new()
-            where TValue : class, ISerializable, new()
+        public override DataCache<TKey, TValue> CreateCache<TKey, TValue>()
         {
             Type t = typeof(TValue);
             if (t == typeof(AccountState)) return new DbCache<TKey, TValue>(db, DataEntryPrefix.ST_Account);
@@ -558,7 +556,12 @@ namespace Neo.Implementations.Blockchains.LevelDB
                             StateMachine service = new StateMachine(accounts, validators, assets, contracts, storages);
                             ApplicationEngine engine = new ApplicationEngine(TriggerType.Application, itx, script_table, service, itx.Gas);
                             engine.LoadScript(itx.Script, false);
-                            if (engine.Execute()) service.Commit();
+                            if (engine.Execute())
+                            {
+                                service.Commit();
+                                if (service.Notifications.Count > 0)
+                                    OnNotify(service.Notifications.ToArray());
+                            }
                         }
                         break;
                 }
